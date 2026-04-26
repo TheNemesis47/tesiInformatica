@@ -1,0 +1,16 @@
+[project]
+name = "meta-quest-vision-monorepo"
+version = "0.1.0"
+description = "Monorepo per i progetti di tesi — vision-caption e object-memory"
+authors = [{ name = "Samuel Arenella" }]
+requires-python = ">=3.12,<3.13"
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "pre-commit>=3.7.0",
+]

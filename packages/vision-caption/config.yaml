@@ -1,0 +1,42 @@
+server:
+  host: "0.0.0.0"
+  port: 8765
+  max_connections: 1
+
+camera:
+  resolution_width: 1280
+  resolution_height: 960
+  jpeg_quality: 75
+  frame_send_interval_ms: 500
+
+scene_detection:
+  ssim_threshold: 0.85
+  semantic_threshold: 0.3
+  min_caption_interval_sec: 3.0
+  rfdetr_model_size: "small"
+  rfdetr_confidence: 0.25
+
+vlm:
+  model_name: "gemma4:e4b"
+  runtime: "ollama"
+  temperature: 0.3
+  max_tokens: 100
+  language: "it"
+
+tts:
+  model: "chatterbox-turbo"
+  language: "it"
+  exaggeration: 0.3
+  cfg_weight: 0.5
+  output_format: "wav"
+
+gestures:
+  pointing_debounce_ms: 1500
+  pointing_cooldown_ms: 2000
+  pointing_crop_size: 320
+
+logging:
+  level: "INFO"
+  save_frames: false
+  save_captions: true
+  log_latency: true

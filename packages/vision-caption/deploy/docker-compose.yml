@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: vision-caption-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  vision-caption:
+    build:
+      context: ../..
+      dockerfile: packages/vision-caption/deploy/Dockerfile
+    container_name: vision-caption-server
+    ports:
+      - "8765:8765"
+    environment:
+      - VC_VLM__MODEL_NAME=gemma4:e4b
+      - VC_LOGGING__LEVEL=INFO
+    volumes:
+      - ../config.yaml:/app/config.yaml:ro
+    depends_on:
+      ollama:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  ollama_data:

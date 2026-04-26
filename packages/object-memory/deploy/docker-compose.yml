@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: object-memory-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  object-memory:
+    build:
+      context: ../..
+      dockerfile: packages/object-memory/deploy/Dockerfile
+    container_name: object-memory-server
+    ports:
+      - "8766:8766"
+    environment:
+      - OM_VLM__MODEL_NAME=gemma4:e4b
+      - OM_LOGGING__LEVEL=INFO
+      - OM_STORAGE__DB_PATH=/app/data/object_memory.db
+      - OM_STORAGE__SNAPSHOT_DIR=/app/data/snapshots
+    volumes:
+      - ../config.yaml:/app/config.yaml:ro
+      - object_data:/app/data
+    depends_on:
+      ollama:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  object_data:

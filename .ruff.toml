@@ -1,0 +1,16 @@
+line-length = 99
+target-version = "py312"
+src = ["src"]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "N"]
+ignore = [
+    "E501",  # line too long — handled by formatter
+]
+
+[lint.isort]
+known-first-party = ["vision_caption"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

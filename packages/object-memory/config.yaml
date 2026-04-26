@@ -1,0 +1,37 @@
+server:
+  host: "0.0.0.0"
+  port: 8766
+  max_connections: 1
+
+camera:
+  resolution_width: 1280
+  resolution_height: 960
+  jpeg_quality: 75
+  frame_send_interval_ms: 500
+
+scene_detection:
+  ssim_threshold: 0.85
+  min_catalog_interval_sec: 2.0
+  rfdetr_model_size: "small"
+  rfdetr_confidence: 0.35
+
+vlm:
+  model_name: "gemma4:e4b"
+  runtime: "ollama"
+  temperature: 0.1
+  max_tokens: 50
+  language: "it"
+
+storage:
+  db_path: "data/object_memory.db"
+  snapshots_dir: "data/snapshots"
+  max_snapshots_per_object: 10
+
+overlap:
+  iou_threshold: 0.4
+  position_update_threshold: 0.15
+
+logging:
+  level: "INFO"
+  save_frames: false
+  log_latency: true
