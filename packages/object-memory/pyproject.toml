@@ -3,18 +3,18 @@ name = "object-memory"
 version = "0.1.0"
 description = "Memoria visiva degli oggetti — cataloga e localizza oggetti tramite Meta Quest 3"
 authors = [{ name = "Samuel Arenella" }]
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.14"
 dependencies = [
     "vision-commons",
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.30.0",
-    "pydantic>=2.0",
-    "pydantic-settings>=2.0",
-    "structlog>=24.0",
+    "fastapi>=0.136.0",
+    "uvicorn[standard]>=0.46.0",
+    "pydantic>=2.13",
+    "pydantic-settings>=2.6",
+    "structlog>=25.0",
     "pyyaml>=6.0",
-    "websockets>=12.0",
+    "websockets>=14.0",
     "aiosqlite>=0.20.0",
-    "pillow>=10.0",
+    "pillow>=11.0",
 ]
 
 [project.scripts]
@@ -22,12 +22,12 @@ object-memory = "object_memory.__main__:main"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
-    "pytest-asyncio>=0.23.0",
-    "pytest-cov>=5.0",
-    "mypy>=1.10.0",
-    "ruff>=0.4.0",
-    "httpx>=0.27.0",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0",
+    "mypy>=1.13.0",
+    "ruff>=0.8.0",
+    "httpx>=0.28.0",
 ]
 
 [tool.uv.sources]
@@ -46,7 +46,7 @@ testpaths = ["tests"]
 addopts = "--cov=src/object_memory --cov-report=term-missing -v"
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 strict = true
 warn_return_any = true
 [[tool.mypy.overrides]]
