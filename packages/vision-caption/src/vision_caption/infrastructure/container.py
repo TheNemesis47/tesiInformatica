@@ -14,6 +14,7 @@ import structlog
 
 from vision_caption.adapters.captioning.gemma_caption import GemmaCaptionGenerator
 from vision_caption.adapters.captioning.mock_caption import MockCaptionGenerator
+from vision_caption.adapters.captioning.openrouter_caption import OpenRouterCaptionGenerator
 from vision_commons.adapters.frame_source.webcam_source import WebcamFrameSource
 from vision_commons.adapters.preprocessing.opencv_preprocessor import OpenCVFramePreprocessor
 from vision_commons.adapters.scene_detection.hybrid_detector import HybridSceneDetector
@@ -108,17 +109,31 @@ class ApplicationContainer:
                 logger.info("container.caption_generator_created", type="mock")
             else:
                 vlm = self.settings.vlm
-                self._caption_generator = GemmaCaptionGenerator(
-                    model_name=vlm.model_name,
-                    temperature=vlm.temperature,
-                    max_tokens=vlm.max_tokens,
-                    language=vlm.language,
-                )
-                logger.info(
-                    "container.caption_generator_created",
-                    type="gemma",
-                    model=vlm.model_name,
-                )
+                if vlm.runtime == "openrouter":
+                    self._caption_generator = OpenRouterCaptionGenerator(
+                        model_name=vlm.model_name,
+                        api_key=vlm.api_key,
+                        temperature=vlm.temperature,
+                        max_tokens=vlm.max_tokens,
+                        language=vlm.language,
+                    )
+                    logger.info(
+                        "container.caption_generator_created",
+                        type="openrouter",
+                        model=vlm.model_name,
+                    )
+                else:
+                    self._caption_generator = GemmaCaptionGenerator(
+                        model_name=vlm.model_name,
+                        temperature=vlm.temperature,
+                        max_tokens=vlm.max_tokens,
+                        language=vlm.language,
+                    )
+                    logger.info(
+                        "container.caption_generator_created",
+                        type="gemma",
+                        model=vlm.model_name,
+                    )
         return self._caption_generator
 
     def create_speech_synthesizer(self) -> SpeechSynthesizerPort:
@@ -137,8 +152,7 @@ class ApplicationContainer:
             else:
                 tts = self.settings.tts
                 self._speech_synthesizer = ChatterboxSynthesizer(
-                    exaggeration=tts.exaggeration,
-                    cfg_weight=tts.cfg_weight,
+                    api_url=tts.api_url,
                 )
                 logger.info(
                     "container.speech_synthesizer_created",

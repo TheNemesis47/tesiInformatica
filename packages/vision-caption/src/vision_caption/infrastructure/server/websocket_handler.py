@@ -38,7 +38,7 @@ router = APIRouter(tags=["websocket"])
 
 
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, request: Request) -> None:
+async def websocket_endpoint(websocket: WebSocket) -> None:
     """Endpoint WebSocket principale per lo streaming audio-descrizione.
 
     Accetta connessioni WebSocket, riceve frame JPEG e invia audio sintetizzato.
@@ -46,25 +46,22 @@ async def websocket_endpoint(websocket: WebSocket, request: Request) -> None:
 
     Args:
         websocket: Connessione WebSocket con il client.
-        request: Request HTTP di upgrade (per accedere all'app state).
     """
     await websocket.accept()
     client_host = websocket.client.host if websocket.client else "unknown"
     logger.info("websocket.client_connected", client=client_host)
 
-    container = request.app.state.container
+    container = websocket.app.state.container
     pipeline = container.create_pipeline()
 
     try:
         while True:
-            # TODO: implementare il loop di ricezione/invio
-            # 1. raw_message = await websocket.receive_text()
-            # 2. message = json.loads(raw_message)
-            # 3. frame = _deserialize_frame(message)
-            # 4. result = await pipeline.process(frame)
-            # 5. if result is not None:
-            #        await websocket.send_bytes(result.audio_bytes)
-            raise NotImplementedError
+            raw_message = await websocket.receive_text()
+            message = json.loads(raw_message)
+            frame = _deserialize_frame(message)
+            result = await pipeline.process(frame)
+            if result is not None:
+                await websocket.send_bytes(result.audio_bytes)
 
     except WebSocketDisconnect:
         logger.info("websocket.client_disconnected", client=client_host)
@@ -88,13 +85,33 @@ def _deserialize_frame(message: dict[str, object]) -> FrameData:
     Raises:
         VisionCaptionError: Se il messaggio è malformato o mancano campi obbligatori.
     """
-    # TODO: implementare
-    # 1. Estrai "image" (base64) e decodifica con base64.b64decode
-    # 2. Estrai "mode" → CaptureMode
-    # 3. Estrai "pointing_x", "pointing_y" se mode == POINTING
-    # 4. Costruisci FrameMetadata con i dati estratti
-    # 5. Restituisci FrameData(image_bytes=..., metadata=...)
-    raise NotImplementedError
+    if "image" not in message:
+        raise VisionCaptionError("Missing 'image' field in message")
+    if "mode" not in message:
+        raise VisionCaptionError("Missing 'mode' field in message")
+
+    try:
+        image_bytes = base64.b64decode(str(message["image"]))
+    except Exception as e:
+        raise VisionCaptionError("Invalid base64 image encoding") from e
+
+    mode_str = str(message["mode"]).upper()
+    try:
+        mode = CaptureMode[mode_str]
+    except KeyError:
+        mode = CaptureMode.AUTO
+
+    pointing_coords = None
+    if mode == CaptureMode.POINTING:
+        if "pointing_x" in message and "pointing_y" in message:
+            pointing_coords = (float(message["pointing_x"]), float(message["pointing_y"]))
+
+    metadata = FrameMetadata(
+        mode=mode,
+        pointing_coords=pointing_coords,
+    )
+
+    return FrameData(image_bytes=image_bytes, metadata=metadata)
 
 
 async def _send_error(websocket: WebSocket, message: str) -> None:

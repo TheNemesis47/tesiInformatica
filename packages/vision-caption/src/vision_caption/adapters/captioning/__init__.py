@@ -2,4 +2,5 @@
 from __future__ import annotations
 from vision_caption.adapters.captioning.gemma_caption import GemmaCaptionGenerator
 from vision_caption.adapters.captioning.mock_caption import MockCaptionGenerator
-__all__ = ["GemmaCaptionGenerator", "MockCaptionGenerator"]
+from vision_caption.adapters.captioning.openrouter_caption import OpenRouterCaptionGenerator
+__all__ = ["GemmaCaptionGenerator", "MockCaptionGenerator", "OpenRouterCaptionGenerator"]

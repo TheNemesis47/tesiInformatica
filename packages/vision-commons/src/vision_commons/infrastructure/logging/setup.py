@@ -58,10 +58,10 @@ def configure_logging(level: str = "INFO", json_output: bool = False) -> None:
         ]
 
     structlog.configure(
-        processors=processors,
-        wrapper_class=structlog.make_filtering_bound_logger(log_level),
+        processors=[structlog.stdlib.filter_by_level] + processors,
+        wrapper_class=structlog.stdlib.BoundLogger,
         context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(),
+        logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
 

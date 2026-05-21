@@ -101,6 +101,8 @@ def main() -> None:
             port=settings.server.port,
             log_level=settings.logging.level.lower(),
             access_log=False,  # Logging strutturato gestito da structlog
+            ws_ping_interval=None,
+            ws_ping_timeout=None,
         )
     except KeyboardInterrupt:
         logger.info("vision-caption stopped by user")

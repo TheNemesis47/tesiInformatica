@@ -81,19 +81,51 @@ class CaptionPipeline:
             CaptionGenerationError: Se la generazione della caption fallisce.
             SpeechSynthesisError: Se la sintesi vocale fallisce.
         """
-        # TODO: implementare la logica di orchestrazione
-        # 1. Se mode == POINTING, bypassa scene detection
-        # 2. Se mode == AUTO, controlla scene change via self._scene_detector.analyze(frame)
-        # 3. Se scene_analysis.scene_changed è False, return None
-        # 4. Controlla self._rate_limiter.can_proceed()
-        # 5. self._rate_limiter.record()
-        # 6. Costruisci CaptionRequest e chiama self._caption_generator.generate()
-        # 7. Logga latenza generazione
-        # 8. Chiama self._speech_synthesizer.synthesize() con caption.text
-        # 9. Logga latenza sintesi
-        # 10. Logga latenza totale
-        # 11. Emetti evento CaptionGeneratedEvent
-        raise NotImplementedError
+        # 1. Se mode == POINTING, bypassa scene detection e delega
+        if frame.metadata.mode is CaptureMode.POINTING:
+            return await self.process_pointing(frame)
+
+        # 2. Se mode == AUTO, controlla scene change
+        analysis = self._scene_detector.analyze(frame)
+        if not analysis.scene_changed:
+            logger.info(
+                "pipeline.scene_stable",
+                ssim_score=analysis.ssim_score
+            )
+            return None
+
+        # 3. Controlla il rate limiter
+        if not self._rate_limiter.can_proceed():
+            logger.info(
+                "pipeline.rate_limited",
+                seconds_until_next=self._rate_limiter.seconds_until_next
+            )
+            return None
+
+        # 4. Registra l'evento
+        self._rate_limiter.record()
+
+        # 5. Costruisci CaptionRequest e genera la caption con il VLM
+        caption_request = CaptionRequest(frame=frame, mode=frame.metadata.mode)
+        caption = await self._caption_generator.generate(caption_request)
+        logger.info(
+            "pipeline.caption_generated",
+            text=caption.text,
+            generation_time_ms=caption.generation_time_ms,
+        )
+
+        # 6. Sintetizza l'audio con il TTS
+        audio_result = await self._speech_synthesizer.synthesize(
+            text=caption.text,
+            language=caption.language
+        )
+        logger.info(
+            "pipeline.speech_synthesized",
+            synthesis_time_ms=audio_result.synthesis_time_ms,
+            total_latency_ms=caption.generation_time_ms + audio_result.synthesis_time_ms
+        )
+
+        return audio_result
 
     async def process_pointing(
         self,
@@ -117,12 +149,29 @@ class CaptionPipeline:
             CaptionGenerationError: Se la generazione della caption fallisce.
             SpeechSynthesisError: Se la sintesi vocale fallisce.
         """
-        # TODO: implementare
-        # 1. Costruisci CaptionRequest con mode=POINTING e prompt_override
-        # 2. Genera caption
-        # 3. Sintetizza audio
-        # 4. Ritorna AudioResult
-        raise NotImplementedError
+        caption_request = CaptionRequest(
+            frame=frame,
+            mode=CaptureMode.POINTING,
+            prompt_override=prompt_override
+        )
+        caption = await self._caption_generator.generate(caption_request)
+        logger.info(
+            "pipeline.pointing.caption_generated",
+            text=caption.text,
+            generation_time_ms=caption.generation_time_ms,
+        )
+
+        audio_result = await self._speech_synthesizer.synthesize(
+            text=caption.text,
+            language=caption.language
+        )
+        logger.info(
+            "pipeline.pointing.speech_synthesized",
+            synthesis_time_ms=audio_result.synthesis_time_ms,
+            total_latency_ms=caption.generation_time_ms + audio_result.synthesis_time_ms
+        )
+
+        return audio_result
 
 
 __all__ = ["CaptionPipeline"]

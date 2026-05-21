@@ -30,7 +30,7 @@ class ServerSettings(BaseSettings):
 
     host: str = "0.0.0.0"
     port: int = 8765
-    max_connections: int = 1
+    max_connections: int = 2
 
 
 class CameraSettings(BaseSettings):
@@ -87,6 +87,7 @@ class VLMSettings(BaseSettings):
 
     model_name: str = "gemma4:e4b"
     runtime: str = "ollama"
+    api_key: str = ""
     temperature: float = Field(default=0.3, ge=0.0, le=1.0)
     max_tokens: int = Field(default=100, gt=0)
     language: str = "it"
@@ -103,6 +104,7 @@ class TTSSettings(BaseSettings):
         output_format: Formato audio di output ("wav" o "opus").
     """
 
+    api_url: str = "http://localhost:4123"
     model_config = SettingsConfigDict(env_prefix="VC_TTS__")
 
     model: str = "chatterbox-turbo"

@@ -1,14 +1,14 @@
-"""Adapter per la sintesi vocale tramite Chatterbox Turbo.
+"""Adapter per la sintesi vocale tramite Chatterbox TTS API.
 
-Usa il modello Chatterbox Turbo per sintetizzare testo in audio ad alta qualità
-con bassa latenza. Richiede GPU NVIDIA con CUDA.
+Invece di caricare il modello pesante in memoria, questo adapter fa richieste
+HTTP al microservizio Chatterbox che è già in esecuzione sulla porta 4123.
 """
 
 from __future__ import annotations
 
-import io
 import time
 
+import httpx
 import structlog
 
 from vision_caption.core.domain.audio import AudioFormat, AudioResult
@@ -17,80 +17,71 @@ logger = structlog.get_logger(__name__)
 
 
 class ChatterboxSynthesizer:
-    """Sintetizzatore vocale tramite Chatterbox Turbo TTS.
-
-    Carica il modello Chatterbox lazily al primo utilizzo per non rallentare
-    lo startup. Il modello viene mantenuto in memoria per tutta la vita
-    dell'applicazione.
-
+    """Sintetizzatore vocale tramite Chatterbox TTS API esterna.
+    
+    Effettua richieste HTTP al server Chatterbox.
+    
     Attributes:
-        device: Device PyTorch da usare ("cuda", "cpu", "mps").
-        exaggeration: Livello di espressività della voce (0.0–1.0).
-            Valori bassi (0.2–0.4) sono ottimali per audio-descrizioni.
-        cfg_weight: Peso del classifier-free guidance (0.0–1.0).
-            Influenza la fedeltà al testo rispetto alla naturalezza.
+        api_url: L'URL base dell'API (es. "http://localhost:4123")
     """
 
-    def __init__(
-        self,
-        device: str = "cuda",
-        exaggeration: float = 0.3,
-        cfg_weight: float = 0.5,
-    ) -> None:
-        """Inizializza il sintetizzatore Chatterbox.
+    def __init__(self, api_url: str = "http://localhost:4123") -> None:
+        """Inizializza l'adapter.
 
         Args:
-            device: Device PyTorch ("cuda", "cpu", "mps").
-            exaggeration: Espressività della voce (0.0–1.0).
-            cfg_weight: Peso del CFG (0.0–1.0).
+            api_url: URL dell'API di ChatterboxTTS.
         """
-        self.device = device
-        self.exaggeration = exaggeration
-        self.cfg_weight = cfg_weight
-        self._model: object | None = None  # chatterbox.tts.ChatterboxTTS
-
-    def _load_model(self) -> None:
-        """Carica il modello Chatterbox TTS in memoria (lazy loading).
-
-        Invocato automaticamente al primo utilizzo di ``synthesize()``.
-        """
-        # TODO: implementare
-        # from chatterbox.tts import ChatterboxTTS
-        # self._model = ChatterboxTTS.from_pretrained(device=self.device)
-        # logger.info("chatterbox_model.loaded", device=self.device)
-        raise NotImplementedError
+        self.api_url = api_url.rstrip("/")
+        # Endpoint tipico per la generazione è /audio/speech
+        self.endpoint = f"{self.api_url}/v1/audio/speech"
 
     async def synthesize(self, text: str, language: str = "it") -> AudioResult:
-        """Sintetizza il testo in audio usando Chatterbox Turbo.
+        """Sintetizza il testo in audio tramite l'API di Chatterbox.
 
         Args:
             text: Testo da sintetizzare.
-            language: Codice lingua (attualmente ignorato da Chatterbox,
-                incluso per compatibilità con il port).
+            language: Codice lingua.
 
         Returns:
             AudioResult con i bytes WAV e i metadati di latenza.
 
         Raises:
-            SpeechSynthesisError: Se il modello non è caricato o la sintesi
-                fallisce.
+            Exception: Se l'API restituisce un errore.
         """
-        # TODO: implementare
-        # 1. Lazy load modello se self._model is None
-        # 2. t0 = time.perf_counter()
-        # 3. wav_tensor = self._model.generate(
-        #        text,
-        #        exaggeration=self.exaggeration,
-        #        cfg_weight=self.cfg_weight,
-        #    )
-        # 4. synthesis_time_ms = (time.perf_counter() - t0) * 1000
-        # 5. Converti tensor in bytes WAV con torchaudio.save() su BytesIO
-        # 6. Calcola duration_ms dalla lunghezza del tensor e sample_rate
-        # 7. Logga synthesis_time_ms e duration_ms
-        # 8. Restituisci AudioResult(audio_bytes=..., format=AudioFormat.WAV,
-        #                           sample_rate=..., duration_ms=...,
-        #                           caption_text=text, synthesis_time_ms=...)
-        raise NotImplementedError
 
+        async with httpx.AsyncClient() as client:
+            body = {
+                "input": text,
+                "voice": "default",
+                "language": language,
+                "speed": 1.2,
+            }
+
+            t0 = time.perf_counter()
+            try:
+                response = await client.post(self.endpoint, json=body, timeout=120)
+                response.raise_for_status()
+            except Exception as e:
+                logger.error("chatterbox.syntesis_failed", error = str(e))
+                raise e
+            t1 = time.perf_counter()
+
+            audio_bytes = response.content
+
+            logger.info(
+                "chatterbox.synthesis_done",
+                time_ms=(t1 - t0) * 1000,
+                audio_size_bytes=len(audio_bytes),
+                text=text,
+            )
+
+            return AudioResult(
+                audio_bytes=audio_bytes,
+                format=AudioFormat.WAV,
+                sample_rate=24000,
+                duration_ms=0,
+                caption_text=text,
+                synthesis_time_ms=(t1-t0)*1000
+            )
 
 __all__ = ["ChatterboxSynthesizer"]

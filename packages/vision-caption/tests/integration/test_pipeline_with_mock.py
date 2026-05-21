@@ -44,12 +44,10 @@ class TestPipelineWithMocks:
         mock_frame_data: FrameData,
     ) -> None:
         """La pipeline completa restituisce un AudioResult con mock."""
-        # TODO: decommentare quando CaptionPipeline.process() è implementato
-        # result = await pipeline_with_mocks.process(mock_frame_data)
-        # assert result is not None
-        # assert isinstance(result.audio_bytes, bytes)
-        # assert len(result.caption_text) > 0
-        pytest.skip("CaptionPipeline.process() non ancora implementato")
+        result = await pipeline_with_mocks.process(mock_frame_data)
+        assert result is not None
+        assert isinstance(result.audio_bytes, bytes)
+        assert len(result.caption_text) > 0
 
     @pytest.mark.asyncio
     async def test_mock_generators_call_counts(
@@ -77,8 +75,6 @@ class TestPipelineWithMocks:
         assert caption_gen.call_count == 0
         assert speech_synth.call_count == 0
 
-        # TODO: decommentare quando process() è implementato
-        # await pipeline.process(mock_frame_data)
-        # assert caption_gen.call_count == 1
-        # assert speech_synth.call_count == 1
-        pytest.skip("CaptionPipeline.process() non ancora implementato")
+        await pipeline.process(mock_frame_data)
+        assert caption_gen.call_count == 1
+        assert speech_synth.call_count == 1

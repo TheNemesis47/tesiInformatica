@@ -10,8 +10,8 @@ import pytest
 
 from vision_caption.core.domain.audio import AudioFormat, AudioResult
 from vision_caption.core.domain.caption import Caption, CaptionRequest
-from vision_caption.core.domain.detection import BoundingBox, Detection, SceneAnalysis
-from vision_caption.core.domain.frame import CaptureMode, FrameData, FrameMetadata
+from vision_commons.domain.detection import BoundingBox, Detection, SceneAnalysis
+from vision_commons.domain.frame import CaptureMode, FrameData, FrameMetadata
 from vision_caption.infrastructure.config.settings import AppSettings
 
 # ── Frame fixtures ─────────────────────────────────────────────────────────
@@ -19,25 +19,15 @@ from vision_caption.infrastructure.config.settings import AppSettings
 
 @pytest.fixture
 def minimal_jpeg_bytes() -> bytes:
-    """Bytes di un'immagine JPEG 1x1 pixel valida.
+    """Genera in memoria i byte di un'immagine JPEG bianca di 100x100 pixel per i test."""
+    import cv2
+    import numpy as np
 
-    Usata come immagine minima per i test senza richiedere file su disco.
-    """
-    # JPEG 1x1 pixel bianco minimo valido
-    return (
-        b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
-        b"\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t"
-        b"\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a"
-        b"\x1f\x1e\x1d\x1a\x1c\x1c $.' \",#\x1c\x1c(7),01444\x1f'9=82<.342\x1e\xc0"
-        b"\x00\x0b\x08\x00\x01\x00\x01\x01\x01\x11\x00\xff\xc4\x00\x1f"
-        b"\x00\x00\x01\x05\x01\x01\x01\x01\x01\x01\x00\x00\x00\x00\x00"
-        b"\x00\x00\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\xff\xc4"
-        b"\x00\xb5\x10\x00\x02\x01\x03\x03\x02\x04\x03\x05\x05\x04\x04"
-        b"\x00\x00\x01}\x01\x02\x03\x00\x04\x11\x05\x12!1A\x06\x13Qa"
-        b'\x07"q\x142\x81\x91\xa1\x08#B\xb1\xc1\x15R\xd1\xf0$3br'
-        b"\x82\t\n\x16\x17\x18\x19\x1a%&'()*456789:CDEFGHIJ"
-        b"STUVWXYZ\xff\xda\x00\x08\x01\x01\x00\x00?\x00\xf5\x00\x1f\xff\xd9"
-    )
+    img = np.ones((100, 100), dtype=np.uint8) * 255
+    success, encoded_image = cv2.imencode(".jpg", img)
+    if not success:
+        raise AssertionError("Failed to encode JPEG")
+    return encoded_image.tobytes()
 
 
 @pytest.fixture

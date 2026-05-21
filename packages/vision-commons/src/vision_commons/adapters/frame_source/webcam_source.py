@@ -7,7 +7,9 @@ Usa cv2.VideoCapture per acquisire frame dalla webcam Logitech Brio 4K
 from __future__ import annotations
 
 import structlog
+import cv2
 
+from vision_caption.shared import FrameCaptureError
 from vision_commons.domain.frame import CaptureMode, FrameData, FrameMetadata
 
 logger = structlog.get_logger(__name__)
@@ -28,7 +30,7 @@ class WebcamFrameSource:
     def __init__(
         self,
         device_id: int = 0,
-        resolution: tuple[int, int] = (1920, 1080),
+        resolution: tuple[int, int] = (1280, 720),
     ) -> None:
         """Inizializza la sorgente webcam e apre il dispositivo.
 
@@ -38,7 +40,7 @@ class WebcamFrameSource:
         """
         self.device_id = device_id
         self.resolution = resolution
-        self._cap: object | None = None  # cv2.VideoCapture
+        self._cap: cv2.VideoCapture | None = None  # cv2.VideoCapture
 
     def _open(self) -> None:
         """Apre la connessione con il dispositivo di acquisizione.
@@ -48,14 +50,12 @@ class WebcamFrameSource:
         Raises:
             FrameCaptureError: Se il dispositivo non è disponibile.
         """
-        # TODO: implementare
-        # import cv2
-        # self._cap = cv2.VideoCapture(self.device_id)
-        # self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
-        # self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
-        # if not self._cap.isOpened():
-        #     raise FrameCaptureError(f"Cannot open camera device {self.device_id}")
-        raise NotImplementedError
+
+        self._cap = cv2.VideoCapture(self.device_id)
+        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
+        self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
+        if not self._cap.isOpened():
+            raise FrameCaptureError(f"Cannot open camera device {self.device_id}")
 
     def capture(self) -> FrameData | None:
         """Cattura un singolo frame dalla webcam.
@@ -64,26 +64,31 @@ class WebcamFrameSource:
             FrameData con il frame compresso in JPEG, oppure None se
             l'acquisizione fallisce.
         """
-        # TODO: implementare
-        # 1. Se self._cap is None, chiamare self._open()
-        # 2. ret, frame = self._cap.read()
-        # 3. Se ret è False → log warning e return None
-        # 4. Comprimi il frame con cv2.imencode('.jpg', frame, [quality_param])
-        # 5. Costruisci FrameMetadata con source_resolution=self.resolution
-        # 6. Restituisci FrameData(image_bytes=jpeg_bytes, metadata=metadata)
-        raise NotImplementedError
+        if self._cap is None:
+            self._cap = self._open()
+        ret, frame = self._cap.read()
+        if not ret:
+            logger.warning("Failed to acquire frame")
+            return None
+        compressedFrame = cv2.imencode(".jpg", frame)[1].tobytes()
+        metaData = FrameMetadata(
+            source_resolution= self.resolution
+        )
+        return FrameData(
+            image_bytes=compressedFrame,
+            metadata=metaData
+        )
 
     def release(self) -> None:
         """Rilascia il dispositivo di acquisizione.
 
         Deve essere chiamato quando la webcam non è più necessaria.
         """
-        # TODO: implementare
-        # if self._cap is not None:
-        #     self._cap.release()
-        #     self._cap = None
-        #     logger.info("webcam.released", device_id=self.device_id)
-        raise NotImplementedError
+
+        if self._cap is not None:
+            self._cap.release()
+            self._cap = None
+            logger.info(f"Camera with id:{self.device_id} released")
 
 
 __all__ = ["WebcamFrameSource"]

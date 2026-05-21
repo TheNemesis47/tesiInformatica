@@ -17,17 +17,17 @@ scene_detection:
   rfdetr_confidence: 0.25
 
 vlm:
-  model_name: "gemma4:e4b"
-  runtime: "ollama"
+  model_name: "google/gemma-4-26b-a4b-it"
+  runtime: "openrouter"
+  api_key: "apikey"
   temperature: 0.3
   max_tokens: 100
   language: "it"
 
 tts:
+  api_url: "http://localhost:4123"
   model: "chatterbox-turbo"
   language: "it"
-  exaggeration: 0.3
-  cfg_weight: 0.5
   output_format: "wav"
 
 gestures:

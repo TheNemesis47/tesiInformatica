@@ -7,10 +7,13 @@ SSIM è veloce e sensibile a cambiamenti di illuminazione e movimento.
 
 from __future__ import annotations
 
+import cv2
+import numpy as np
 import structlog
 
 from vision_commons.domain.detection import SceneAnalysis
 from vision_commons.domain.frame import FrameData
+from skimage.metrics import structural_similarity as ssim
 
 logger = structlog.get_logger(__name__)
 
@@ -50,17 +53,38 @@ class SSIMSceneDetector:
             SceneAnalysis con ``ssim_score`` valorizzato e ``scene_changed``
             impostato in base alla soglia configurata.
         """
-        # TODO: implementare
-        # 1. Se self._last_frame è None → SceneAnalysis(detections=(), scene_changed=True)
-        # 2. Decodifica entrambi i frame da bytes con cv2.imdecode
-        # 3. Converti in grayscale con cv2.cvtColor
-        # 4. Ridimensiona al minore dei due se le dimensioni differiscono
-        # 5. Calcola ssim_score con skimage.metrics.structural_similarity
-        # 6. scene_changed = ssim_score < self.threshold
-        # 7. Aggiorna self._last_frame = frame
-        # 8. Logga ssim_score e scene_changed
-        # 9. Restituisci SceneAnalysis(detections=(), scene_changed=..., ssim_score=...)
-        raise NotImplementedError
+
+        if self._last_frame is None:
+            self._last_frame = frame
+            return SceneAnalysis(detections=(), scene_changed=True)
+
+        #decodifica Frame
+        arr_attuale = np.frombuffer(frame.image_bytes, dtype=np.uint8)
+        img_attuale = cv2.imdecode(arr_attuale, cv2.IMREAD_GRAYSCALE)
+
+        arr_precedente = np.frombuffer(self._last_frame.image_bytes, dtype=np.uint8)
+        img_precedente = cv2.imdecode(arr_precedente, cv2.IMREAD_GRAYSCALE)
+
+        #ridimensionamento
+        if img_precedente.shape != img_attuale.shape:
+            (altezza_precedente, larghezza_precedente) = img_precedente.shape
+            (altezza_attuale, larghezza_attuale) = img_attuale.shape
+            nuova_altezza = min(altezza_precedente, altezza_attuale)
+            nuova_larghezza = min(larghezza_precedente, larghezza_attuale)
+            img_precedente = cv2.resize(img_precedente, (nuova_larghezza, nuova_altezza))
+            img_attuale = cv2.resize(img_attuale, (nuova_larghezza, nuova_altezza))
+
+        #delta di scikit
+        ssim_score = float(ssim(img_precedente, img_attuale))
+        scene_changed = (ssim_score < self.threshold)
+        self._last_frame = frame
+        logger.info(
+            "ssim.analysis_done",
+            ssim_score=ssim_score,
+            threshold=self.threshold,
+            scene_changed=scene_changed
+        )
+        return SceneAnalysis(detections=(), scene_changed=scene_changed, ssim_score=ssim_score)
 
     def reset(self) -> None:
         """Resetta il frame di riferimento interno.

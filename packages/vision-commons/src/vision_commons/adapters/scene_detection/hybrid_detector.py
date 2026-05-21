@@ -60,15 +60,35 @@ class HybridSceneDetector:
             e ``semantic_diff`` è None. Se SSIM indica cambiamento, RF-DETR
             viene eseguito e ``scene_changed`` riflette la sua valutazione.
         """
-        # TODO: implementare
-        # 1. Esegui ssim_analysis = self.ssim_detector.analyze(frame)
-        # 2. Se ssim_analysis.scene_changed è False → return ssim_analysis (skip RF-DETR)
-        # 3. Logga che si procede con RF-DETR
-        # 4. Esegui rfdetr_analysis = self.rfdetr_detector.analyze(frame)
-        # 5. Combina i risultati: usa rfdetr_analysis.scene_changed come verdetto finale
-        # 6. Restituisci SceneAnalysis con detections da RF-DETR,
-        #    ssim_score da SSIM, semantic_diff da RF-DETR
-        raise NotImplementedError
 
+        ssim_analysis = self.ssim_detector.analyze(frame)
+        if not ssim_analysis.scene_changed:
+            logger.debug(
+                "hybrid_detector.ssim_stable_skipping_rfdetr",
+                ssim_score=ssim_analysis.ssim_score
+            )
+            return ssim_analysis
+
+        logger.info(
+            "ssim_analysis, scene changed, skip to RF-DETR",
+            ssim_score=ssim_analysis.ssim_score
+        )
+
+        rfdetr_analysis = self.rfdetr_detector.analyze(frame)
+        combined_analysis = SceneAnalysis(
+            detections=rfdetr_analysis.detections,
+            scene_changed=rfdetr_analysis.scene_changed,
+            ssim_score=ssim_analysis.ssim_score,
+            semantic_diff=rfdetr_analysis.semantic_diff
+        )
+        logger.info(
+            "hybrid_detector.analysis_complete",
+            scene_changed=combined_analysis.scene_changed,
+            ssim_score=combined_analysis.ssim_score,
+            semantic_diff=combined_analysis.semantic_diff,
+            num_detections=len(combined_analysis.detections)
+        )
+
+        return combined_analysis
 
 __all__ = ["HybridSceneDetector"]
